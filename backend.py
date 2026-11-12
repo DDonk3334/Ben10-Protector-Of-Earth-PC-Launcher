@@ -40,7 +40,7 @@ class ConfigManager:
 
     @staticmethod
     def apply_dolphin(data):
-        cfg_dir = os.path.join(BASE_DIR, "Dolphin", "User", "Config")
+        cfg_dir = os.path.join(BASE_DIR, "Engine", "User", "Config")
         os.makedirs(cfg_dir, exist_ok=True)
 
         gfx = (
@@ -49,6 +49,7 @@ class ConfigManager:
             f"VSync = {data['vsync']}\n"
             "AspectRatio = 1\n"
             "HiresTextures = True\n"
+            "ShowFPS = False\n"
             "[Hardware]\n"
             "GFXBackend = D3D\n"
         )
@@ -59,6 +60,11 @@ class ConfigManager:
             "[Display]\n"
             f"Fullscreen = {data['fullscreen']}\n"
             "RenderToMain = True\n"
+            "[Interface]\n"
+            "ConfirmStop = False\n"
+            "HideCursor = True\n"
+            "UsePanicHandlers = False\n"
+            "OnScreenDisplayMessages = False\n"
         )
         with open(os.path.join(cfg_dir, "Dolphin.ini"), "w", encoding="utf-8") as f:
             f.write(ini)
