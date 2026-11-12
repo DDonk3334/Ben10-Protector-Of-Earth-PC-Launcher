@@ -49,6 +49,8 @@ class ConfigManager:
             f"VSync = {data['vsync']}\n"
             "AspectRatio = 1\n"
             "HiresTextures = True\n"
+            "[Hardware]\n"
+            "GFXBackend = D3D\n"
         )
         with open(os.path.join(cfg_dir, "GFX.ini"), "w", encoding="utf-8") as f:
             f.write(gfx)
