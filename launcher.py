@@ -1,149 +1,148 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox
-import os, subprocess, sys
+from tkinter import ttk, filedialog, messagebox
+import os
+import subprocess
+import sys
 from backend import BASE_DIR, ConfigManager
 
-C = {
-    "bg": "#0B0E11", "side": "#13181E", "card": "#1A212B",
-    "acc": "#39FF14", "txt": "#FFFFFF", "dim": "#8A99AD"
-}
 
-class LauncherApp:
+class OmnitrixCanvas(tk.Canvas):
+    def __init__(self, parent, size=72):
+        super().__init__(parent, width=size, height=size, bg="#0D1117", highlightthickness=0)
+        p = 6
+        self.create_oval(p, p, size - p, size - p, fill="#161B22", outline="#39FF14", width=3)
+        self.create_polygon(p + 12, p + 8, size - p - 12, p + 8, size // 2, size // 2, fill="#39FF14")
+        self.create_polygon(p + 12, size - p - 8, size - p - 12, size - p - 8, size // 2, size // 2, fill="#39FF14")
+
+
+class Ben10LauncherApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Ben 10: Protector of Earth - PC Edition")
-        self.root.configure(bg=C["bg"])
+        self.root.configure(bg="#0D1117")
         if sys.platform.startswith("win"):
-            self.root.geometry("720x450")
+            self.root.geometry("760x480")
             self.root.resizable(False, False)
 
         self.cfg = ConfigManager.load()
-        self.btns, self.tabs = {}, {}
+        self._build_style()
+        self._build_ui()
 
-        self.side = tk.Frame(root, bg=C["side"], width=180)
-        self.side.pack(side="left", fill="y")
-        self.side.pack_propagate(False)
+    def _build_style(self):
+        s = ttk.Style()
+        s.theme_use("clam")
+        s.configure("TNotebook", background="#0D1117", borderwidth=0)
+        s.configure("TNotebook.Tab", background="#161B22", foreground="#C9D1D9", padding=[14, 7], font=("Arial", 9, "bold"))
+        s.map("TNotebook.Tab", background=[("selected", "#21262D")], foreground=[("selected", "#39FF14")])
+        s.configure("Dark.TFrame", background="#0D1117")
+        s.configure("Card.TFrame", background="#161B22")
+        s.configure("Dark.TRadiobutton", background="#161B22", foreground="#FFFFFF", font=("Arial", 10))
+        s.configure("Dark.TCheckbutton", background="#161B22", foreground="#FFFFFF", font=("Arial", 10))
 
-        self.main = tk.Frame(root, bg=C["bg"])
-        self.main.pack(side="right", fill="both", expand=True, padx=16, pady=14)
+    def _build_ui(self):
+        hdr = tk.Frame(self.root, bg="#0D1117", pady=12, padx=18)
+        hdr.pack(fill="x")
+        OmnitrixCanvas(hdr, 68).pack(side="left", padx=(0, 14))
 
-        self._init_sidebar()
-        self._init_tabs()
-        self.show_tab("play")
+        tf = tk.Frame(hdr, bg="#0D1117")
+        tf.pack(side="left", fill="y", pady=6)
+        tk.Label(tf, text="BEN 10: PROTECTOR OF EARTH", font=("Arial", 17, "bold"), bg="#0D1117", fg="#FFFFFF").pack(anchor="w")
+        tk.Label(tf, text="PC EDITION LAUNCHER  |  60 FPS WIDESCREEN EDITION", font=("Arial", 8, "bold"), bg="#0D1117", fg="#39FF14").pack(anchor="w")
 
-    def _init_sidebar(self):
-        cv = tk.Canvas(self.side, width=60, height=60, bg=C["side"], highlightthickness=0)
-        cv.pack(pady=(16, 6))
-        cv.create_oval(5, 5, 55, 55, outline=C["acc"], width=3, fill="#0D1115")
-        cv.create_polygon(16, 14, 44, 14, 30, 30, fill=C["acc"])
-        cv.create_polygon(16, 46, 44, 46, 30, 30, fill=C["acc"])
+        nb = ttk.Notebook(self.root)
+        nb.pack(fill="both", expand=True, padx=18, pady=(0, 16))
+        t1, t2, t3 = ttk.Frame(nb, style="Dark.TFrame"), ttk.Frame(nb, style="Dark.TFrame"), ttk.Frame(nb, style="Dark.TFrame")
+        nb.add(t1, text="  PLAY  ")
+        nb.add(t2, text="  SETTINGS  ")
+        nb.add(t3, text="  CONTROLS  ")
 
-        tk.Label(self.side, text="BEN 10: POE", font=("Arial", 12, "bold"), bg=C["side"], fg=C["txt"]).pack()
-        tk.Label(self.side, text="PC EDITION v1.0", font=("Arial", 8, "bold"), bg=C["side"], fg=C["acc"]).pack(pady=(0, 16))
+        # Tab 1: PLAY
+        c1 = ttk.Frame(t1, style="Card.TFrame", padding=18)
+        c1.pack(fill="both", expand=True, pady=10)
+        tk.Label(c1, text="GAME DATA DIRECTORY", font=("Arial", 9, "bold"), bg="#161B22", fg="#8B949E").pack(anchor="w")
 
-        menu = [("play", "[>] Home"), ("opts", "[*] Settings"), ("keys", "[+] Controls"), ("info", "[i] About")]
-        for tid, label in menu:
-            b = tk.Button(
-                self.side, text=label, anchor="w", font=("Arial", 9, "bold"),
-                bg=C["side"], fg=C["dim"], relief="flat", padx=14, pady=9,
-                command=lambda t=tid: self.show_tab(t)
-            )
-            b.pack(fill="x", pady=2)
-            self.btns[tid] = b
+        rf = tk.Frame(c1, bg="#0D1117", padx=10, pady=8)
+        rf.pack(fill="x", pady=(6, 16))
+        self.lbl_rom = tk.Label(rf, text=self._rom_txt(), font=("Arial", 9), bg="#0D1117", fg="#E6EDF3", wraplength=430, justify="left")
+        self.lbl_rom.pack(side="left", fill="x", expand=True)
+        tk.Button(rf, text="SELECT FILE", font=("Arial", 8, "bold"), bg="#21262D", fg="#39FF14", relief="flat", padx=10, pady=5, command=self._pick_rom).pack(side="right")
 
-    def _init_tabs(self):
-        # TAB 1: HOME
-        p1 = tk.Frame(self.main, bg=C["bg"])
-        tk.Label(p1, text="PROTECTOR OF EARTH - LAUNCHER", font=("Arial", 12, "bold"), bg=C["bg"], fg=C["txt"]).pack(anchor="w")
-        
-        c1 = tk.Frame(p1, bg=C["card"], padx=12, pady=12)
-        c1.pack(fill="x", pady=12)
-        self.lbl_rom = tk.Label(c1, text=self._rom_txt(), font=("Arial", 9), bg=C["card"], fg=C["txt"], wraplength=380, justify="left")
-        self.lbl_rom.pack(anchor="w", pady=(0, 8))
-        tk.Button(c1, text="Select Game (.rvz / .iso)", font=("Arial", 9, "bold"), bg="#283240", fg=C["txt"], relief="flat", padx=10, pady=5, command=self._pick_rom).pack(anchor="w")
+        tk.Label(c1, text="• Native Keyboard + Mouse motion mapping ready\n• 16:9 Widescreen + Direct3D 11 rendering pipeline\n• Portable saves & configs stored locally", font=("Arial", 9), bg="#161B22", fg="#8B949E", justify="left").pack(anchor="w", pady=(0, 16))
+        tk.Button(c1, text="▶  PLAY GAME", font=("Arial", 13, "bold"), bg="#39FF14", fg="#0D1117", relief="flat", pady=12, command=self._play).pack(side="bottom", fill="x")
 
-        self.lbl_sum = tk.Label(p1, text=self._sum_txt(), font=("Arial", 8), bg=C["bg"], fg=C["dim"])
-        self.lbl_sum.pack(anchor="w", pady=4)
-
-        tk.Button(p1, text="PLAY GAME", font=("Arial", 12, "bold"), bg=C["acc"], fg="#000000", relief="flat", pady=12, command=self._play).pack(side="bottom", fill="x")
-        self.tabs["play"] = p1
-
-        # TAB 2: SETTINGS
-        p2 = tk.Frame(self.main, bg=C["bg"])
-        tk.Label(p2, text="GRAPHICS & INPUT", font=("Arial", 12, "bold"), bg=C["bg"], fg=C["txt"]).pack(anchor="w", pady=(0, 8))
-        
+        # Tab 2: SETTINGS
+        c2 = ttk.Frame(t2, style="Card.TFrame", padding=18)
+        c2.pack(fill="both", expand=True, pady=10)
+        tk.Label(c2, text="INPUT PROFILE", font=("Arial", 9, "bold"), bg="#161B22", fg="#39FF14").pack(anchor="w")
         self.v_ctrl = tk.StringVar(value=self.cfg["control_scheme"])
-        for t, v in [("Keyboard + Mouse", "keyboard_mouse"), ("Gamepad (XInput)", "gamepad")]:
-            tk.Radiobutton(p2, text=t, variable=self.v_ctrl, value=v, bg=C["bg"], fg=C["txt"], selectcolor=C["card"], command=self._save_opts).pack(anchor="w")
+        for txt, val in [("Keyboard + Mouse (WASD + Click Attacks)", "keyboard_mouse"), ("Xbox / PlayStation Controller (XInput)", "gamepad")]:
+            ttk.Radiobutton(c2, text=txt, variable=self.v_ctrl, value=val, style="Dark.TRadiobutton", command=self._save_opts).pack(anchor="w", pady=2)
 
-        tk.Label(p2, text="Resolution:", font=("Arial", 9, "bold"), bg=C["bg"], fg=C["acc"]).pack(anchor="w", pady=(10, 2))
+        tk.Label(c2, text="RENDER RESOLUTION", font=("Arial", 9, "bold"), bg="#161B22", fg="#39FF14").pack(anchor="w", pady=(12, 2))
         self.v_res = tk.StringVar(value=self.cfg["resolution"])
-        for t, v in [("480p Native", "1"), ("720p HD", "2"), ("1080p Full HD", "3"), ("4K UHD", "6")]:
-            tk.Radiobutton(p2, text=t, variable=self.v_res, value=v, bg=C["bg"], fg=C["txt"], selectcolor=C["card"], command=self._save_opts).pack(anchor="w")
+        rf2 = tk.Frame(c2, bg="#161B22")
+        rf2.pack(anchor="w")
+        for txt, val in [("480p", "1"), ("720p", "2"), ("1080p", "3"), ("4K", "6")]:
+            ttk.Radiobutton(rf2, text=txt, variable=self.v_res, value=val, style="Dark.TRadiobutton", command=self._save_opts).pack(side="left", padx=(0, 14))
 
         self.v_fs = tk.BooleanVar(value=self.cfg["fullscreen"])
-        tk.Checkbutton(p2, text="Fullscreen Mode", variable=self.v_fs, bg=C["bg"], fg=C["txt"], selectcolor=C["card"], command=self._save_opts).pack(anchor="w", pady=(10, 0))
-        self.tabs["opts"] = p2
+        self.v_vs = tk.BooleanVar(value=self.cfg["vsync"])
+        ttk.Checkbutton(c2, text="Fullscreen Mode", variable=self.v_fs, style="Dark.TCheckbutton", command=self._save_opts).pack(anchor="w", pady=(12, 2))
+        ttk.Checkbutton(c2, text="Enable VSync", variable=self.v_vs, style="Dark.TCheckbutton", command=self._save_opts).pack(anchor="w")
 
-        # TAB 3: CONTROLS
-        p3 = tk.Frame(self.main, bg=C["bg"])
-        tk.Label(p3, text="PC KEYBINDINGS", font=("Arial", 12, "bold"), bg=C["bg"], fg=C["txt"]).pack(anchor="w", pady=(0, 8))
+        # Tab 3: CONTROLS
+        c3 = ttk.Frame(t3, style="Card.TFrame", padding=18)
+        c3.pack(fill="both", expand=True, pady=10)
         keys = [
-            ("WASD", "Move Character"), ("SPACE", "Jump (A)"), ("LMB", "Light Attack (Shake)"),
-            ("RMB", "Heavy Attack (Nunchuk)"), ("SHIFT", "Block / Grab (B)"), ("1-4", "Select Alien"), ("ESC", "Pause")
+            ("W A S D", "Move Character"),
+            ("SPACEBAR", "Jump / Double Jump"),
+            ("LEFT CLICK", "Light Attack"),
+            ("RIGHT CLICK", "Heavy Attack"),
+            ("LEFT SHIFT", "Block / Grab / Interact"),
+            ("1 / 2 / 3 / 4", "Alien Transformations"),
+            ("Q / E", "Camera / Cycle Forms"),
+            ("ESC / TAB", "Pause / Upgrades Menu")
         ]
-        for k, d in keys:
-            tk.Label(p3, text=f"{k:<8} -  {d}", font=("Courier", 9), bg=C["bg"], fg=C["txt"]).pack(anchor="w", pady=2)
-        self.tabs["keys"] = p3
-
-        # TAB 4: ABOUT
-        p4 = tk.Frame(self.main, bg=C["bg"])
-        tk.Label(p4, text="ABOUT PROJECT", font=("Arial", 12, "bold"), bg=C["bg"], fg=C["txt"]).pack(anchor="w", pady=(0, 8))
-        tk.Label(p4, text="Open-source PC wrapper for Ben 10: Protector of Earth (Wii).\n60 FPS, 16:9 Widescreen, custom mouse motion controls.\n\nNo copyrighted ROMs included.", font=("Arial", 9), bg=C["bg"], fg=C["dim"], justify="left", wraplength=380).pack(anchor="w")
-        self.tabs["info"] = p4
-
-    def show_tab(self, tid):
-        for f in self.tabs.values(): f.pack_forget()
-        self.tabs[tid].pack(fill="both", expand=True)
-        for k, b in self.btns.items(): b.config(bg=C["card"] if k == tid else C["side"], fg=C["acc"] if k == tid else C["dim"])
+        for k, desc in keys:
+            row = tk.Frame(c3, bg="#161B22")
+            row.pack(fill="x", pady=2)
+            tk.Label(row, text=k, font=("Consolas", 9, "bold"), bg="#0D1117", fg="#39FF14", width=16).pack(side="left", padx=(0, 10))
+            tk.Label(row, text=desc, font=("Arial", 9), bg="#161B22", fg="#C9D1D9").pack(side="left")
 
     def _rom_txt(self):
         p = self.cfg.get("game_path", "")
-        return f"Ready: {os.path.basename(p)}" if p and os.path.exists(p) else "No ROM selected. Pick your .rvz / .iso file."
-
-    def _sum_txt(self):
-        res = {"1": "480p", "2": "720p", "3": "1080p", "6": "4K"}.get(self.cfg["resolution"], "1080p")
-        return f"Profile: {self.cfg['control_scheme']} | {res} | Fullscreen: {self.cfg['fullscreen']}"
+        return f"Loaded: {os.path.basename(p)}" if p and os.path.exists(p) else "No game data selected"
 
     def _pick_rom(self):
-        p = filedialog.askopenfilename(filetypes=[("Wii Images", "*.rvz *.iso *.wbfs"), ("All", "*.*")])
+        p = filedialog.askopenfilename(filetypes=[("Game Data", "*.rvz *.iso *.wbfs"), ("All", "*.*")])
         if p:
             self.cfg["game_path"] = p
             ConfigManager.save(self.cfg)
             self.lbl_rom.config(text=self._rom_txt())
 
     def _save_opts(self):
-        self.cfg.update({"control_scheme": self.v_ctrl.get(), "resolution": self.v_res.get(), "fullscreen": self.v_fs.get()})
+        self.cfg.update({"control_scheme": self.v_ctrl.get(), "resolution": self.v_res.get(), "fullscreen": self.v_fs.get(), "vsync": self.v_vs.get()})
         ConfigManager.save(self.cfg)
-        self.lbl_sum.config(text=self._sum_txt())
 
     def _play(self):
         gp = self.cfg.get("game_path", "")
         if not gp or not os.path.exists(gp):
-            messagebox.showwarning("Error", "Select game image first!")
+            messagebox.showwarning("Missing Game Data", "Please select your game image file (.rvz / .iso) first!")
             return
         ConfigManager.apply_dolphin(self.cfg)
-        exe = os.path.join(BASE_DIR, "Dolphin", "Dolphin.exe")
+        exe = os.path.join(BASE_DIR, "Engine", "Ben10Game.exe")
         if not sys.platform.startswith("win"):
-            messagebox.showinfo("Test OK", f"Configs written!\nCommand: Dolphin.exe -b -e {os.path.basename(gp)}")
+            messagebox.showinfo("Test OK", f"Config written! Ready to launch:\n{os.path.basename(gp)}")
             return
         if not os.path.exists(exe):
-            messagebox.showerror("Missing Dolphin", "Put Dolphin.exe inside 'Dolphin' folder.")
+            messagebox.showerror("Engine Missing", "Core game files not found inside 'Engine' folder.")
             return
         subprocess.Popen([exe, "-b", "-e", gp])
+        self.root.destroy()
+
 
 if __name__ == "__main__":
     root = tk.Tk()
-    LauncherApp(root)
+    Ben10LauncherApp(root)
     root.mainloop()
     
