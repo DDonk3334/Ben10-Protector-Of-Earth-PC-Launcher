@@ -33,7 +33,7 @@ class Ben10LauncherApp:
         s = ttk.Style()
         s.theme_use("clam")
         s.configure("TNotebook", background="#0D1117", borderwidth=0)
-        s.configure("TNotebook.Tab", background="#161B22", foreground="#C9D1D9", padding=, font=("Arial", 9, "bold"))
+        s.configure("TNotebook.Tab", background="#161B22", foreground="#C9D1D9", padding=(14, 6), font=("Arial", 9, "bold"))
         s.map("TNotebook.Tab", background=[("selected", "#21262D")], foreground=[("selected", "#39FF14")])
         s.configure("Dark.TFrame", background="#0D1117")
         s.configure("Card.TFrame", background="#161B22")
